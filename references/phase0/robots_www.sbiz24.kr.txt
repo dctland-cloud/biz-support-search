@@ -1,0 +1,1 @@
+HTTP 404 - www.sbiz24.kr 에는 robots.txt 가 존재하지 않음 (요청 시 SPA HTML 반환됨). 실측일: 2026-07-15

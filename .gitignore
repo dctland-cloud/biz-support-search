@@ -1,0 +1,21 @@
+# 인증키·실제 기업 프로필·실행 이력 — 절대 커밋 금지 (이중 방어)
+.env
+*.env
+*.key
+biz-profile.md
+!biz-profile.example.md
+data/
+snapshots/
+history/
+
+# Playwright MCP 산출물 (개인정보 포함 가능)
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+Thumbs.db
+.DS_Store

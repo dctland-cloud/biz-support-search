@@ -1,0 +1,20 @@
+User-agent: *
+Disallow: /
+
+User-agent: Googlebot
+Disallow: 
+Disallow: /main/totalSrch
+Disallow: /main/qna
+Disallow: /main/pollServey
+
+User-agent: AdsBot-Google
+Disallow: 
+Disallow: /main/totalSrch
+Disallow: /main/qna
+Disallow: /main/pollServey
+
+User-agent: Googlebot-Image
+Disallow: 
+Disallow: /main/totalSrch
+Disallow: /main/qna
+Disallow: /main/pollServey
