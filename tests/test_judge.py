@@ -64,3 +64,53 @@ def test_kstartup_record_basic():
     assert r["summary"]
     assert "<" not in r["summary"]
     assert r["raw_period_text"] == "20260710 ~ 20260721"
+
+
+from collector.judge import merge_duplicates, normalize_title
+
+
+def _rec(**kw):
+    base = {
+        "id": "bizinfo:X", "title": "테스트 공고", "summary": "", "source": "bizinfo",
+        "org": "기관A", "category": "기타", "raw_category": None,
+        "regions": ["전국"], "target_types": ["중소기업"],
+        "startup_years": None, "age_limit": None,
+        "period_status": "OPEN", "apply_start": "2026-07-01", "apply_end": "2026-07-31",
+        "listed_at": "2026-07-01", "eligibility_complete": False,
+        "url": "https://a", "alt_url": None, "raw_period_text": "",
+    }
+    base.update(kw)
+    return base
+
+
+def test_normalize_title():
+    assert normalize_title("[충북] 2026년 테스트 (추경) 공고") == normalize_title("[충북]2026년테스트(추경)공고")
+    assert normalize_title(None) == ""
+
+
+def test_merge_same_title_and_period():
+    a = _rec(id="bizinfo:1", url="https://bizinfo")
+    b = _rec(id="kstartup:1", source="kstartup", url="https://kstartup",
+             startup_years=["예비창업자"], age_limit=["만 40세 이상"],
+             eligibility_complete=True, target_types=["일반기업"], org="기관B")
+    merged = merge_duplicates([a, b])
+    assert len(merged) == 1
+    m = merged[0]
+    assert m["source"] == "merged"
+    assert m["url"] == "https://bizinfo"
+    assert m["alt_url"] == "https://kstartup"
+    assert m["startup_years"] == ["예비창업자"]      # kstartup 구조화 필드 이식
+    assert m["eligibility_complete"] is True
+    assert set(m["target_types"]) == {"중소기업", "일반기업"}
+
+
+def test_no_merge_different_period():
+    a = _rec(id="bizinfo:1")
+    b = _rec(id="kstartup:1", source="kstartup", apply_end="2026-08-15")
+    assert len(merge_duplicates([a, b])) == 2
+
+
+def test_no_merge_empty_title():
+    a = _rec(id="bizinfo:1", title="")
+    b = _rec(id="kstartup:1", source="kstartup", title="")
+    assert len(merge_duplicates([a, b])) == 2

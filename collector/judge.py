@@ -1,4 +1,6 @@
 """원본 공고 → 공통 레코드 변환, 중복 병합, 자격 판정 준비."""
+import re
+
 from collector.normalize import (
     classify_period,
     classify_period_kstartup,
@@ -64,3 +66,42 @@ def to_record_kstartup(item, today):
         "alt_url": item.get("aply_mthd_onli_rcpt_istc"),
         "raw_period_text": f"{bgng or ''} ~ {end_raw or ''}".strip(" ~"),
     }
+
+
+_TITLE_NOISE = re.compile(r"[\s\[\]()〔〕『』「」《》<>·ㆍ,.\-~〈〉""''\"']+")
+
+
+def normalize_title(title):
+    return _TITLE_NOISE.sub("", (title or "")).lower()
+
+
+def _merge_into(base, other):
+    """other(주로 kstartup)의 정보를 base에 합친다."""
+    base["source"] = "merged"
+    if not base.get("alt_url"):
+        base["alt_url"] = other.get("url")
+    for field in ("startup_years", "age_limit"):
+        if base.get(field) is None:
+            base[field] = other.get(field)
+    if other.get("eligibility_complete"):
+        base["eligibility_complete"] = True
+    for t in other.get("target_types", []):
+        if t not in base["target_types"]:
+            base["target_types"].append(t)
+    regions = [r for r in base["regions"] + other.get("regions", []) if r != "UNKNOWN"]
+    deduped = list(dict.fromkeys(regions))
+    base["regions"] = ["전국"] if "전국" in deduped else (deduped or ["UNKNOWN"])
+
+
+def merge_duplicates(records):
+    """정규화 제목 + 신청 시작일 + 마감일이 같으면 동일 공고로 병합."""
+    seen = {}
+    result = []
+    for rec in records:
+        key = (normalize_title(rec["title"]), rec["apply_start"], rec["apply_end"])
+        if key[0] and key in seen:
+            _merge_into(seen[key], rec)
+        else:
+            seen[key] = rec
+            result.append(rec)
+    return result
