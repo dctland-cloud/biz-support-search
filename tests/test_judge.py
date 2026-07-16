@@ -26,6 +26,11 @@ def test_bizinfo_record_basic():
     assert r["startup_years"] is None
     assert r["listed_at"] == "2026-07-15"
     assert "<p>" not in r["summary"]
+    assert r["title"] == "[충북] 2026년 제천한방천연물산업박람회 체험ㆍ플리마켓 참가자 모집 공고"
+    assert r["org"] == "충청북도 · 제천한방천연물산업진흥재단"
+    assert r["raw_category"] == "내수"
+    assert r["apply_start"] == "2026-07-14"
+    assert r["raw_period_text"] == "2026-07-14 ~ 2026-07-27"
 
 
 def test_bizinfo_rolling_record():
@@ -39,6 +44,7 @@ def test_bizinfo_combined_region():
     item = _load("bizinfo_sample3.json")[2]  # hashtags에 전남광주 포함
     r = to_record_bizinfo(item, TODAY)
     assert "전남" in r["regions"] and "광주" in r["regions"]
+    assert r["alt_url"] == "http://a.to/26jyUIr"
 
 
 def test_kstartup_record_basic():
@@ -54,3 +60,7 @@ def test_kstartup_record_basic():
     assert r["period_status"] == "OPEN"
     assert r["listed_at"] == "2026-07-10"
     assert r["url"].startswith("https://www.k-startup.go.kr")
+    assert r["category"] == "창업·사업화"
+    assert r["summary"]
+    assert "<" not in r["summary"]
+    assert r["raw_period_text"] == "20260710 ~ 20260721"
