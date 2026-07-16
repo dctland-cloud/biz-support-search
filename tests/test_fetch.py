@@ -37,3 +37,29 @@ def test_kstartup_missing_field():
 def test_kstartup_ok():
     payload = {"currentCount": 1, "matchCount": 1, "data": [{"pbanc_sn": 1}]}
     assert validate_kstartup_page(payload) == payload
+
+
+def test_bizinfo_totcnt_absent_fails():
+    with pytest.raises(FetchError, match="totCnt"):
+        validate_bizinfo({"jsonArray": [{"pblancId": "A"}]})
+
+
+class _FakeResp:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {"currentCount": 1, "matchCount": 10**9, "data": [{"pbanc_sn": 1}]}
+
+
+class _FakeSession:
+    def get(self, *a, **kw):
+        return _FakeResp()
+
+
+def test_kstartup_page_cap(monkeypatch):
+    import collector.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    with pytest.raises(FetchError, match="페이지 상한"):
+        fetch_mod.fetch_kstartup(session=_FakeSession())

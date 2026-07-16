@@ -8,6 +8,7 @@ BIZINFO_URL = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
 KSTARTUP_URL = "https://nidapi.k-startup.go.kr/api/kisedKstartupService/v1/getAnnouncementInformation"
 _HEADERS = {"User-Agent": USER_AGENT}
 _TIMEOUT = 120
+_MAX_PAGES = 50
 
 
 class FetchError(Exception):
@@ -24,7 +25,9 @@ def validate_bizinfo(payload):
     if not isinstance(items, list) or not items:
         raise FetchError("bizinfo: 응답에 공고 목록이 없음")
     tot = items[0].get("totCnt")
-    if tot is not None and int(tot) != len(items):
+    if tot is None:
+        raise FetchError("bizinfo: totCnt 필드 없음 — 응답 구조 변화 의심")
+    if int(tot) != len(items):
         raise FetchError(f"bizinfo: totCnt {tot} != fetched {len(items)}")
     return items
 
@@ -52,6 +55,8 @@ def fetch_kstartup(session=None):
     s = session or requests.Session()
     items, page = [], 1
     while True:
+        if page > _MAX_PAGES:
+            raise FetchError(f"kstartup: 페이지 상한 {_MAX_PAGES} 초과")
         resp = s.get(
             KSTARTUP_URL,
             params={
