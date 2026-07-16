@@ -83,7 +83,7 @@ function cardHtml({ rec, verdict }) {
   rec.regions.filter(x => x !== "UNKNOWN").slice(0, 3)
     .forEach(x => badges.push(`<span class="badge">${esc(x)}</span>`));
   const period = rec.apply_end
-    ? `${rec.apply_start || "?"} ~ ${rec.apply_end}`
+    ? `${esc(rec.apply_start || "?")} ~ ${esc(rec.apply_end)}`
     : esc(rec.raw_period_text || "기간 원문 확인");
   return `<li class="card">
     <div class="badges">${badges.join("")}</div>
