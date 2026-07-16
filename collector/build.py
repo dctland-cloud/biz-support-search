@@ -3,7 +3,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -70,6 +70,19 @@ def load_previous(source, data_dir=None):
     return [r for r in old if r.get("source") in (source, "merged")]
 
 
+def _refresh_period_status(record, today):
+    """폴백으로 실린 이전 레코드의 기간 상태를 오늘 기준으로 재판정한다."""
+    start, end = record.get("apply_start"), record.get("apply_end")
+    if not (start and end):
+        return record
+    try:
+        s, e = date.fromisoformat(start), date.fromisoformat(end)
+    except ValueError:
+        return record
+    record["period_status"] = "UPCOMING" if today < s else ("CLOSED" if today > e else "OPEN")
+    return record
+
+
 def _collect(name, collect_fn):
     """소스 하나 수집. 실패하면 직전 데이터로 폴백하고 실패 표시."""
     try:
@@ -100,6 +113,7 @@ def main():
         sys.exit(1)
 
     merged = merge_duplicates(biz_records + ks_records)
+    merged = [_refresh_period_status(r, today) for r in merged]
     merged = [r for r in merged if r["period_status"] != "CLOSED"]
     merged.sort(key=lambda r: (r["apply_end"] or "9999-12-31", r["title"]))
 

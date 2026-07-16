@@ -9,6 +9,10 @@ def test_date_range_open():
     assert classify_period("2026-07-14 ~ 2026-07-27", TODAY) == ("OPEN", "2026-07-14", "2026-07-27")
 
 
+def test_date_range_fullwidth_tilde():
+    assert classify_period("2026-07-14 ～ 2026-07-27", TODAY) == ("OPEN", "2026-07-14", "2026-07-27")
+
+
 def test_date_range_upcoming():
     assert classify_period("2026-08-01 ~ 2026-08-31", TODAY)[0] == "UPCOMING"
 

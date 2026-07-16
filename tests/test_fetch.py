@@ -1,4 +1,5 @@
 import pytest
+import requests
 
 from collector.fetch import FetchError, validate_bizinfo, validate_kstartup_page
 
@@ -63,3 +64,53 @@ def test_kstartup_page_cap(monkeypatch):
     monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
     with pytest.raises(FetchError, match="페이지 상한"):
         fetch_mod.fetch_kstartup(session=_FakeSession())
+
+
+class _FakeSingleRespKstartup:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {"currentCount": 1, "matchCount": 1, "data": [{"pbanc_sn": 1}]}
+
+
+class _FlakySession:
+    """처음 두 번은 ConnectionError, 세 번째부터는 정상 응답."""
+
+    def __init__(self, fail_times):
+        self.fail_times = fail_times
+        self.calls = 0
+
+    def get(self, *a, **kw):
+        self.calls += 1
+        if self.calls <= self.fail_times:
+            raise requests.ConnectionError("연결 실패")
+        return _FakeSingleRespKstartup()
+
+
+class _AlwaysFailSession:
+    def __init__(self):
+        self.calls = 0
+
+    def get(self, *a, **kw):
+        self.calls += 1
+        raise requests.ConnectionError("연결 실패")
+
+
+def test_fetch_kstartup_retries_then_succeeds(monkeypatch):
+    import collector.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    session = _FlakySession(fail_times=2)
+    items = fetch_mod.fetch_kstartup(session=session)
+    assert items == [{"pbanc_sn": 1}]
+
+
+def test_fetch_kstartup_raises_after_max_retries(monkeypatch):
+    import collector.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    session = _AlwaysFailSession()
+    with pytest.raises(requests.RequestException):
+        fetch_mod.fetch_kstartup(session=session)
+    assert session.calls == 3

@@ -124,6 +124,32 @@ def test_main_partial_failure_uses_previous(tmp_path, monkeypatch):
     assert meta["sources"]["kstartup"]["ok"] is True
 
 
+def test_main_reclassifies_fallback_record_closed_and_filters(tmp_path, monkeypatch):
+    monkeypatch.setattr(build_mod, "DATA_DIR", tmp_path)
+    today = date.today()
+    past_start = (today - timedelta(days=30)).isoformat()
+    past_end = (today - timedelta(days=1)).isoformat()
+    prev = [_rec(1, "bizinfo", period_status="OPEN", apply_start=past_start, apply_end=past_end)]
+    (tmp_path / "programs.json").write_text(json.dumps(prev), encoding="utf-8")
+    monkeypatch.setattr(build_mod, "load_env_key", lambda: "fake-key")
+
+    def fake_fetch_bizinfo(key, session=None):
+        raise FetchError("bizinfo 인증 실패")
+
+    def fake_fetch_kstartup(session=None):
+        return [_kstartup_item()]
+
+    monkeypatch.setattr(build_mod.fetch, "fetch_bizinfo", fake_fetch_bizinfo)
+    monkeypatch.setattr(build_mod.fetch, "fetch_kstartup", fake_fetch_kstartup)
+
+    build_mod.main()
+
+    programs = json.loads((tmp_path / "programs.json").read_text(encoding="utf-8"))
+    ids = {r["id"] for r in programs}
+    assert "bizinfo:1" not in ids
+    assert "kstartup:999" in ids
+
+
 def test_main_both_fail_exits_without_write(tmp_path, monkeypatch):
     monkeypatch.setattr(build_mod, "DATA_DIR", tmp_path)
     monkeypatch.setattr(build_mod, "load_env_key", lambda: None)

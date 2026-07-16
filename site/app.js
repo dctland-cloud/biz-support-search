@@ -72,6 +72,7 @@ function esc(s) {
 
 function cardHtml({ rec, verdict }) {
   const d = dday(rec);
+  const safeUrl = /^https?:\/\//i.test(rec.url || "") ? rec.url : null;
   const badges = [];
   if (verdict === "ok") badges.push('<span class="badge ok">✅ 신청 가능</span>');
   else badges.push('<span class="badge checkmark">⚪ 원문 확인 필요</span>');
@@ -87,7 +88,7 @@ function cardHtml({ rec, verdict }) {
     : esc(rec.raw_period_text || "기간 원문 확인");
   return `<li class="card">
     <div class="badges">${badges.join("")}</div>
-    <h2><a href="${esc(rec.url)}" target="_blank" rel="noopener">${esc(rec.title)}</a></h2>
+    <h2>${safeUrl ? `<a href="${esc(safeUrl)}" target="_blank" rel="noopener">${esc(rec.title)}</a>` : esc(rec.title)}</h2>
     <p class="meta">${esc(rec.org)} · ${period}</p>
     ${rec.summary ? `<p class="summary">${esc(rec.summary)}</p>` : ""}
   </li>`;

@@ -8,7 +8,7 @@ _ROLLING_PATTERNS = (
     "상시", "수시", "예산 소진", "예산소진", "소진시", "소진 시",
     "선착순", "마감시", "마감 시", "완료시", "완료 시",
 )
-_DATE_RANGE = re.compile(r"(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})")
+_DATE_RANGE = re.compile(r"(\d{4}-\d{2}-\d{2})\s*[~～∼]\s*(\d{4}-\d{2}-\d{2})")
 
 
 def _status_from_dates(start: date, end: date, today: date) -> str:
