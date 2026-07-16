@@ -68,7 +68,7 @@ def to_record_kstartup(item, today):
     }
 
 
-_TITLE_NOISE = re.compile(r"[\s\[\]()〔〕『』「」《》<>·ㆍ,.\-~〈〉""''\"']+")
+_TITLE_NOISE = re.compile(r"[\s\[\]()〔〕『』「」《》〈〉<>·ㆍ,.\-~“”‘’\"']+")
 
 
 def normalize_title(title):

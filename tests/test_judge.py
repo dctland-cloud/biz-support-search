@@ -114,3 +114,13 @@ def test_no_merge_empty_title():
     a = _rec(id="bizinfo:1", title="")
     b = _rec(id="kstartup:1", source="kstartup", title="")
     assert len(merge_duplicates([a, b])) == 2
+
+def test_normalize_title_strips_curly_quotes():
+    # Curly quotes: U+201C U+201D U+2018 U+2019
+    curly_text = '“테스트” ‘공고’'
+    straight_text = '"테스트" \'공고\''
+    assert normalize_title(curly_text) == normalize_title(straight_text)
+
+    curly_test = '“테스트”'
+    straight_test = "테스트"
+    assert normalize_title(curly_test) == normalize_title(straight_test)
