@@ -1,6 +1,7 @@
 """수집 → 정규화 → 병합 → site/data/*.json 생성. 부분 실패 시 직전 데이터 유지."""
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +29,15 @@ def load_env_key():
     return None
 
 
+def _redact(text):
+    """오류 문자열에 인증키가 그대로 남지 않도록 마스킹 (meta.json에 커밋됨)."""
+    text = re.sub(r"(crtfcKey|serviceKey)=[^&\s\"']+", r"\1=***", text)
+    key = load_env_key()
+    if key:
+        text = text.replace(key, "***")
+    return text
+
+
 def check_missing_rate(records):
     bad = [r for r in records if not all(r.get(f) for f in _REQUIRED)]
     if records and len(bad) / len(records) > 0.05:
@@ -35,11 +45,28 @@ def check_missing_rate(records):
     return [r for r in records if all(r.get(f) for f in _REQUIRED)]
 
 
-def load_previous(source, data_dir=DATA_DIR):
-    path = Path(data_dir) / "programs.json"
+def _to_records(items, converter, today):
+    """원본 항목을 공통 레코드로 변환. 개별 항목 변환 실패는 5%까지 허용(그 이상은 응답 구조 변화로 간주)."""
+    good, bad = [], 0
+    for item in items:
+        try:
+            good.append(converter(item, today))
+        except Exception:
+            bad += 1
+    if items and bad / len(items) > 0.05:
+        raise FetchError(f"레코드 변환 실패 {bad}/{len(items)}건 — 응답 구조 변화 의심")
+    return good
+
+
+def load_previous(source, data_dir=None):
+    data_dir = Path(data_dir) if data_dir else DATA_DIR
+    path = data_dir / "programs.json"
     if not path.exists():
         return []
-    old = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        old = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
     return [r for r in old if r.get("source") in (source, "merged")]
 
 
@@ -50,7 +77,7 @@ def _collect(name, collect_fn):
         return records, {"ok": True, "count": len(records), "error": None}
     except Exception as exc:  # 네트워크·검증·파싱 모두 폴백 대상
         records = load_previous(name)
-        return records, {"ok": False, "count": len(records), "error": str(exc)}
+        return records, {"ok": False, "count": len(records), "error": _redact(str(exc))}
 
 
 def main():
@@ -60,10 +87,10 @@ def main():
         key = load_env_key()
         if not key:
             raise FetchError("BIZINFO_CRTFC_KEY가 없음 (env 또는 ~/.biz-support-search/.env)")
-        return [to_record_bizinfo(i, today) for i in fetch.fetch_bizinfo(key)]
+        return _to_records(fetch.fetch_bizinfo(key), to_record_bizinfo, today)
 
     def collect_kstartup():
-        return [to_record_kstartup(i, today) for i in fetch.fetch_kstartup()]
+        return _to_records(fetch.fetch_kstartup(), to_record_kstartup, today)
 
     biz_records, biz_status = _collect("bizinfo", collect_bizinfo)
     ks_records, ks_status = _collect("kstartup", collect_kstartup)
