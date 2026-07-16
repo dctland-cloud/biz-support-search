@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>정부 지원사업 찾기</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>정부 지원사업 찾기</h1>
+  <p class="sub">기업마당 + K-Startup 공고를 매일 자동 수집 · <span id="meta-info">데이터 불러오는 중…</span></p>
+  <p id="source-warning" class="warning" hidden></p>
+</header>
+
+<section class="filters" aria-label="검색 조건">
+  <div class="filter-row">
+    <label>지역
+      <select id="f-region"><option value="">전체</option></select>
+    </label>
+    <label>창업 단계(업력)
+      <select id="f-stage">
+        <option value="">무관</option>
+        <option value="예비창업자">예비창업 (사업자 없음)</option>
+        <option value="1년미만">1년 미만</option>
+        <option value="2년미만">1~2년</option>
+        <option value="3년미만">2~3년</option>
+        <option value="5년미만">3~5년</option>
+        <option value="7년미만">5~7년</option>
+        <option value="10년미만">7~10년</option>
+        <option value="10년이상">10년 이상</option>
+      </select>
+    </label>
+    <label>대표자 연령
+      <select id="f-age">
+        <option value="">무관</option>
+        <option value="youth">만 39세 이하 (청년)</option>
+        <option value="over40">만 40세 이상</option>
+      </select>
+    </label>
+    <label>정렬
+      <select id="f-sort">
+        <option value="deadline">마감 임박순</option>
+        <option value="latest">최신 등록순</option>
+      </select>
+    </label>
+  </div>
+  <div class="filter-row"><span class="chip-label">분야</span><div id="f-category" class="chips"></div></div>
+  <div class="filter-row"><span class="chip-label">대상</span><div id="f-targets" class="chips"></div></div>
+  <div class="filter-row">
+    <input type="search" id="f-keyword" placeholder="공고명·내용 검색 (예: 바우처, 수출)">
+  </div>
+</section>
+
+<section aria-live="polite">
+  <p id="result-count"></p>
+  <ul id="results" class="cards"></ul>
+  <button id="more" hidden>더 보기</button>
+</section>
+
+<footer>
+  <p>본 서비스는 공고를 요약·분류한 것으로, 정확한 자격요건은 반드시 원문 공고를 확인하세요.</p>
+  <p>출처: <a href="https://www.bizinfo.go.kr" target="_blank" rel="noopener">기업마당</a> ·
+     <a href="https://www.k-startup.go.kr" target="_blank" rel="noopener">K-Startup</a></p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
