@@ -127,12 +127,6 @@ function init(records, meta) {
   state.records = records;
   const metaEl = document.getElementById("meta-info");
   metaEl.textContent = `데이터 기준: ${meta.generated_at.replace("T", " ").slice(0, 16)}`;
-  const failed = Object.entries(meta.sources).filter(([, s]) => !s.ok).map(([n]) => n);
-  if (failed.length) {
-    const warn = document.getElementById("source-warning");
-    warn.textContent = `일부 출처(${failed.join(", ")})의 최신 갱신에 실패해 이전 데이터가 포함되어 있어요.`;
-    warn.hidden = false;
-  }
   const regionSel = document.getElementById("f-region");
   REGIONS.forEach(r => regionSel.insertAdjacentHTML("beforeend", `<option>${r}</option>`));
   buildChips("f-category", CATEGORIES, state.filters.categories);
