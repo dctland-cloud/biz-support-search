@@ -19,3 +19,6 @@ __pycache__/
 # OS
 Thumbs.db
 .DS_Store
+
+# SDD 진행 원장 (스크래치)
+.superpowers/

@@ -71,7 +71,9 @@
 `requirements.txt`:
 ```
 requests>=2.31
+tzdata>=2024.1
 ```
+(tzdata: Windows에는 IANA 시간대 DB가 없어 `ZoneInfo("Asia/Seoul")`가 실패함 — Linux에서는 무해)
 
 `pyproject.toml`:
 ```toml
