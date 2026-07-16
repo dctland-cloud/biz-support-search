@@ -1,5 +1,6 @@
 """지역·기간·분야 정규화 — 소스 원본 값을 공통 표현으로 바꾼다."""
 import re
+import html as _html
 from datetime import date, datetime
 
 # Phase 0 실측 UNKNOWN 문구 중 사실상 상시 모집인 패턴을 ROLLING으로 흡수
@@ -84,3 +85,38 @@ def extract_regions_from_hashtags(hashtags):
     if "전국" in found or len([r for r in found if r != "전국"]) >= 17:
         return ["전국"]
     return found or ["UNKNOWN"]
+
+
+CATEGORIES = [
+    "자금", "R&D", "수출·판로", "인력", "창업·사업화",
+    "교육·컨설팅", "시설·공간", "행사·네트워크", "기타",
+]
+_BIZINFO_CAT = {
+    "금융": "자금", "기술": "R&D", "인력": "인력", "수출": "수출·판로",
+    "내수": "수출·판로", "창업": "창업·사업화", "경영": "교육·컨설팅",
+    "제도": "기타", "기타": "기타",
+}
+_KSTARTUP_CAT = {
+    "융자": "자금", "정책자금": "자금", "보조금": "자금",
+    "R&D": "R&D", "기술개발(R&D)": "R&D", "기술개발(R&D)ㆍ사업화": "R&D",
+    "판로ㆍ해외진출": "수출·판로", "글로벌": "수출·판로", "글로벌진출": "수출·판로",
+    "판로ㆍ해외진출ㆍ글로벌": "수출·판로",
+    "인력": "인력", "인력양성": "인력",
+    "사업화": "창업·사업화", "창업": "창업·사업화",
+    "멘토링ㆍ컨설팅ㆍ교육": "교육·컨설팅", "창업교육": "교육·컨설팅",
+    "시설ㆍ공간ㆍ보육": "시설·공간",
+    "행사ㆍ네트워크": "행사·네트워크",
+}
+_TAG = re.compile(r"<[^>]+>")
+
+
+def map_category(source, raw):
+    table = _BIZINFO_CAT if source == "bizinfo" else _KSTARTUP_CAT
+    return table.get((raw or "").strip(), "기타")
+
+
+def strip_html(value, limit=300):
+    text = _TAG.sub(" ", value or "")
+    text = _html.unescape(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:limit]

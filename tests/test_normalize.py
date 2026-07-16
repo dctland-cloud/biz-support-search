@@ -1,6 +1,6 @@
 from datetime import date
 
-from collector.normalize import classify_period, classify_period_kstartup, REGIONS, extract_regions_from_hashtags, split_region_token
+from collector.normalize import classify_period, classify_period_kstartup, REGIONS, extract_regions_from_hashtags, split_region_token, map_category, strip_html
 
 TODAY = date(2026, 7, 16)
 
@@ -68,3 +68,30 @@ def test_hashtags_no_region():
 
 def test_hashtags_all_17_regions_is_nationwide():
     assert extract_regions_from_hashtags(",".join(REGIONS)) == ["전국"]
+
+
+def test_map_category_bizinfo():
+    assert map_category("bizinfo", "금융") == "자금"
+    assert map_category("bizinfo", "기술") == "R&D"
+    assert map_category("bizinfo", "내수") == "수출·판로"
+    assert map_category("bizinfo", "제도") == "기타"
+
+
+def test_map_category_kstartup():
+    assert map_category("kstartup", "멘토링ㆍ컨설팅ㆍ교육") == "교육·컨설팅"
+    assert map_category("kstartup", "사업화") == "창업·사업화"
+    assert map_category("kstartup", "융자") == "자금"
+
+
+def test_map_category_unknown_value():
+    assert map_category("kstartup", "새로생긴분류") == "기타"
+    assert map_category("bizinfo", None) == "기타"
+
+
+def test_strip_html():
+    html = '<p>공고문&nbsp;안내</p><p style="a">테스트 &#40;추경&#41;</p>'
+    assert strip_html(html) == "공고문 안내 테스트 (추경)"
+
+
+def test_strip_html_limit():
+    assert len(strip_html("가" * 500, limit=300)) == 300
