@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-07-16T14:28:53+09:00",
+  "total": 1738,
+  "sources": {
+    "bizinfo": {
+      "ok": true,
+      "count": 1483,
+      "error": null
+    },
+    "kstartup": {
+      "ok": true,
+      "count": 262,
+      "error": null
+    }
+  }
+}
