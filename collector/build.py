@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from collector import fetch
 from collector.fetch import FetchError
-from collector.judge import merge_duplicates, to_record_bizinfo, to_record_kstartup
+from collector.judge import merge_duplicates, to_record_bizinfo, to_record_kstartup, to_record_wbiz
 
 KST = ZoneInfo("Asia/Seoul")
 ROOT = Path(__file__).resolve().parent.parent
@@ -105,14 +105,21 @@ def main():
     def collect_kstartup():
         return _to_records(fetch.fetch_kstartup(), to_record_kstartup, today)
 
+    def collect_wbiz():
+        return _to_records(fetch.fetch_wbiz(), to_record_wbiz, today)
+
     biz_records, biz_status = _collect("bizinfo", collect_bizinfo)
     ks_records, ks_status = _collect("kstartup", collect_kstartup)
+    wbiz_records, wbiz_status = _collect("wbiz", collect_wbiz)
+    statuses = {"bizinfo": biz_status, "kstartup": ks_status, "wbiz": wbiz_status}
 
-    if not biz_status["ok"] and not ks_status["ok"]:
-        print(f"모든 소스 수집 실패 — bizinfo: {biz_status['error']} / kstartup: {ks_status['error']}")
+    if not any(s["ok"] for s in statuses.values()):
+        detail = " / ".join(f"{name}: {s['error']}" for name, s in statuses.items())
+        print(f"모든 소스 수집 실패 — {detail}")
         sys.exit(1)
 
-    merged = merge_duplicates(biz_records + ks_records)
+    # bizinfo를 앞에 둬야 중복 병합 시 기업마당 레코드가 base가 되고 wbiz 태그가 이식된다
+    merged = merge_duplicates(biz_records + ks_records + wbiz_records)
     merged = [_refresh_period_status(r, today) for r in merged]
     merged = [r for r in merged if r["period_status"] != "CLOSED"]
     merged.sort(key=lambda r: (r["apply_end"] or "9999-12-31", r["title"]))
@@ -124,12 +131,13 @@ def main():
     meta = {
         "generated_at": datetime.now(KST).isoformat(timespec="seconds"),
         "total": len(merged),
-        "sources": {"bizinfo": biz_status, "kstartup": ks_status},
+        "sources": statuses,
     }
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(f"완료: 총 {len(merged)}건 (bizinfo {biz_status['count']} / kstartup {ks_status['count']})")
+    counts = " / ".join(f"{name} {s['count']}" for name, s in statuses.items())
+    print(f"완료: 총 {len(merged)}건 ({counts})")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,9 @@ import re
 from collector.normalize import (
     classify_period,
     classify_period_kstartup,
+    classify_period_wbiz,
     extract_regions_from_hashtags,
+    extract_regions_from_title,
     map_category,
     split_region_token,
     strip_html,
@@ -65,6 +67,34 @@ def to_record_kstartup(item, today):
         "url": item.get("detl_pg_url"),
         "alt_url": item.get("aply_mthd_onli_rcpt_istc"),
         "raw_period_text": f"{bgng or ''} ~ {end_raw or ''}".strip(" ~"),
+    }
+
+
+def to_record_wbiz(item, today):
+    status, start, end = classify_period_wbiz(item.get("period_text"), today)
+    title = (item.get("title") or "").strip()
+    method = (item.get("method") or "").strip()
+    ntt_id = item.get("nttId", "")
+    return {
+        "id": f"wbiz:{ntt_id}",
+        "title": title,
+        "summary": f"신청방법: {method}" if method and method != "-" else None,
+        "source": "wbiz",
+        "org": "여성기업종합지원센터",
+        "category": map_category("wbiz", item.get("category")),
+        "raw_category": item.get("category"),
+        "regions": extract_regions_from_title(title),
+        "target_types": ["여성기업"],  # wbiz 공고는 전부 여성기업 대상
+        "startup_years": None,
+        "age_limit": None,
+        "period_status": status,
+        "apply_start": start,
+        "apply_end": end,
+        "listed_at": start,
+        "eligibility_complete": False,
+        "url": f"https://wbiz.or.kr/notice/bizNewDetail.do?nttId={ntt_id}",
+        "alt_url": None,
+        "raw_period_text": (item.get("period_text") or "").strip(),
     }
 
 

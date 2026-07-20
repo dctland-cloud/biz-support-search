@@ -40,6 +40,43 @@ def test_kstartup_dates_missing():
     assert classify_period_kstartup("2026071", "20260818", TODAY) == ("UNKNOWN", None, None)
 
 
+from collector.normalize import classify_period_wbiz, extract_regions_from_title
+
+
+def test_wbiz_period_dotted_range_open():
+    text = "2026.07.14 (월) 00:00 ~ 2026.08.12 (수) 18:00까지"
+    assert classify_period_wbiz(text, TODAY) == ("OPEN", "2026-07-14", "2026-08-12")
+
+
+def test_wbiz_period_upcoming_and_closed():
+    text = "2026.07.20 ~ 2026.08.12"
+    assert classify_period_wbiz(text, date(2026, 7, 1))[0] == "UPCOMING"
+    assert classify_period_wbiz(text, date(2026, 9, 1))[0] == "CLOSED"
+
+
+def test_wbiz_period_single_date_rolling():
+    assert classify_period_wbiz("2026.05.19 (화) ~ 상시모집", TODAY) == ("ROLLING", None, None)
+
+
+def test_wbiz_period_unknown():
+    for text in ["공고문 참조", "", None]:
+        assert classify_period_wbiz(text, TODAY) == ("UNKNOWN", None, None)
+
+
+def test_regions_from_title_center_name():
+    title = "(재)여성기업종합지원센터 경남센터 제2차 입주기업 모집 공고(∼8.12까지)"
+    assert extract_regions_from_title(title) == ["경남"]
+
+
+def test_regions_from_title_bracket_dedupes():
+    title = "[울산] 2026년 제3차 여성기업종합지원센터 울산센터 BI 신규입주기업 모집(~7.31)"
+    assert extract_regions_from_title(title) == ["울산"]
+
+
+def test_regions_from_title_absent_is_unknown():
+    assert extract_regions_from_title("2026년 제27회 여성창업경진대회 서류 평가 결과 안내") == ["UNKNOWN"]
+
+
 def test_split_region_simple():
     assert split_region_token("충북") == ["충북"]
     assert split_region_token("전국") == ["전국"]

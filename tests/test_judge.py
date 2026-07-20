@@ -115,6 +115,64 @@ def test_no_merge_empty_title():
     b = _rec(id="kstartup:1", source="kstartup", title="")
     assert len(merge_duplicates([a, b])) == 2
 
+from collector.judge import to_record_wbiz
+
+
+def _wbiz_item(**kw):
+    base = {
+        "nttId": "1018",
+        "title": "(재)여성기업종합지원센터 경남센터 제2차 입주기업 모집 공고(∼8.12까지)",
+        "category": "BI입주기업",
+        "period_text": "2026.07.14 (월) 00:00 ~ 2026.08.12 (수) 18:00까지",
+        "method": "이메일 접수(wslee@wbiz.or.kr)",
+    }
+    base.update(kw)
+    return base
+
+
+def test_wbiz_record_basic():
+    r = to_record_wbiz(_wbiz_item(), TODAY)
+    assert r["id"] == "wbiz:1018"
+    assert r["source"] == "wbiz"
+    assert r["org"] == "여성기업종합지원센터"
+    assert r["target_types"] == ["여성기업"]
+    assert r["regions"] == ["경남"]
+    assert r["category"] == "시설·공간"          # BI입주기업 → 시설·공간
+    assert r["period_status"] == "OPEN"
+    assert r["apply_start"] == "2026-07-14"
+    assert r["apply_end"] == "2026-08-12"
+    assert r["listed_at"] == "2026-07-14"
+    assert r["eligibility_complete"] is False
+    assert r["startup_years"] is None
+    assert r["age_limit"] is None
+    assert r["url"] == "https://wbiz.or.kr/notice/bizNewDetail.do?nttId=1018"
+    assert "신청방법" in r["summary"] and "wslee@wbiz.or.kr" in r["summary"]
+
+
+def test_wbiz_record_rolling_no_region():
+    item = _wbiz_item(nttId="900", title="2026년 제27회 여성창업경진대회 서류 평가 결과 안내",
+                      category="지원사업", period_text="2026.05.19 (화) ~ 상시모집", method="-")
+    r = to_record_wbiz(item, TODAY)
+    assert r["period_status"] == "ROLLING"
+    assert r["regions"] == ["UNKNOWN"]
+    assert r["category"] == "창업·사업화"        # 지원사업 → 창업·사업화
+    assert r["summary"] is None                  # 신청방법이 '-'면 요약 생략
+    assert r["apply_start"] is None and r["listed_at"] is None
+
+
+def test_merge_bizinfo_with_wbiz_adds_women_tag():
+    biz = _rec(id="bizinfo:1", title="(재)여성기업종합지원센터 경남센터 제2차 입주기업 모집 공고",
+               apply_start="2026-07-14", apply_end="2026-08-12", url="https://bizinfo")
+    wbiz = to_record_wbiz(_wbiz_item(title="(재)여성기업종합지원센터 경남센터 제2차 입주기업 모집 공고"), TODAY)
+    merged = merge_duplicates([biz, wbiz])
+    assert len(merged) == 1
+    m = merged[0]
+    assert m["source"] == "merged"
+    assert "여성기업" in m["target_types"] and "중소기업" in m["target_types"]
+    assert m["url"] == "https://bizinfo"
+    assert m["alt_url"] == "https://wbiz.or.kr/notice/bizNewDetail.do?nttId=1018"
+
+
 def test_normalize_title_strips_curly_quotes():
     # Curly quotes: U+201C U+201D U+2018 U+2019
     curly_text = '“테스트” ‘공고’'

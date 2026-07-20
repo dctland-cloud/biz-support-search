@@ -97,6 +97,23 @@ def _kstartup_item(pbanc_sn=999, days_span=10):
     }
 
 
+def _wbiz_raw_item(ntt_id="1018", days_span=10):
+    today = date.today()
+    start = (today - timedelta(days=1)).strftime("%Y.%m.%d")
+    end = (today + timedelta(days=days_span)).strftime("%Y.%m.%d")
+    return {
+        "nttId": ntt_id,
+        "title": "(재)여성기업종합지원센터 경남센터 입주기업 모집 공고",
+        "category": "BI입주기업",
+        "period_text": f"{start} (월) 00:00 ~ {end} (수) 18:00까지",
+        "method": "이메일 접수",
+    }
+
+
+def _fail_wbiz(session=None):
+    raise FetchError("wbiz 수집 실패")
+
+
 def test_main_partial_failure_uses_previous(tmp_path, monkeypatch):
     monkeypatch.setattr(build_mod, "DATA_DIR", tmp_path)
     prev = [_rec(1, "bizinfo")]
@@ -111,6 +128,7 @@ def test_main_partial_failure_uses_previous(tmp_path, monkeypatch):
 
     monkeypatch.setattr(build_mod.fetch, "fetch_bizinfo", fake_fetch_bizinfo)
     monkeypatch.setattr(build_mod.fetch, "fetch_kstartup", fake_fetch_kstartup)
+    monkeypatch.setattr(build_mod.fetch, "fetch_wbiz", _fail_wbiz)
 
     build_mod.main()
 
@@ -122,6 +140,31 @@ def test_main_partial_failure_uses_previous(tmp_path, monkeypatch):
     meta = json.loads((tmp_path / "meta.json").read_text(encoding="utf-8"))
     assert meta["sources"]["bizinfo"]["ok"] is False
     assert meta["sources"]["kstartup"]["ok"] is True
+    assert meta["sources"]["wbiz"]["ok"] is False
+
+
+def test_main_includes_wbiz_records(tmp_path, monkeypatch):
+    monkeypatch.setattr(build_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(build_mod, "load_env_key", lambda: None)  # bizinfo 실패
+
+    def fake_fetch_kstartup(session=None):
+        return [_kstartup_item()]
+
+    def fake_fetch_wbiz(session=None):
+        return [_wbiz_raw_item()]
+
+    monkeypatch.setattr(build_mod.fetch, "fetch_kstartup", fake_fetch_kstartup)
+    monkeypatch.setattr(build_mod.fetch, "fetch_wbiz", fake_fetch_wbiz)
+
+    build_mod.main()
+
+    programs = json.loads((tmp_path / "programs.json").read_text(encoding="utf-8"))
+    by_id = {r["id"]: r for r in programs}
+    assert "wbiz:1018" in by_id
+    assert by_id["wbiz:1018"]["target_types"] == ["여성기업"]
+
+    meta = json.loads((tmp_path / "meta.json").read_text(encoding="utf-8"))
+    assert meta["sources"]["wbiz"]["ok"] is True
 
 
 def test_main_reclassifies_fallback_record_closed_and_filters(tmp_path, monkeypatch):
@@ -141,6 +184,7 @@ def test_main_reclassifies_fallback_record_closed_and_filters(tmp_path, monkeypa
 
     monkeypatch.setattr(build_mod.fetch, "fetch_bizinfo", fake_fetch_bizinfo)
     monkeypatch.setattr(build_mod.fetch, "fetch_kstartup", fake_fetch_kstartup)
+    monkeypatch.setattr(build_mod.fetch, "fetch_wbiz", _fail_wbiz)
 
     build_mod.main()
 
@@ -158,6 +202,7 @@ def test_main_both_fail_exits_without_write(tmp_path, monkeypatch):
         raise FetchError("kstartup 오류")
 
     monkeypatch.setattr(build_mod.fetch, "fetch_kstartup", fake_fetch_kstartup)
+    monkeypatch.setattr(build_mod.fetch, "fetch_wbiz", _fail_wbiz)
 
     with pytest.raises(SystemExit) as exc_info:
         build_mod.main()

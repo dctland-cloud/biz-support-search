@@ -47,6 +47,25 @@ def classify_period_kstartup(bgng, end, today):
     return (_status_from_dates(s, e, today), s.isoformat(), e.isoformat())
 
 
+_DOTTED_DATE = re.compile(r"(\d{4})\.(\d{2})\.(\d{2})")
+
+
+def classify_period_wbiz(text, today):
+    """wbiz 신청기간 원문(YYYY.MM.DD 점 표기, 요일·시각 섞임) → (status, start_iso, end_iso)."""
+    text = (text or "").strip()
+    dates = _DOTTED_DATE.findall(text)
+    if len(dates) >= 2:
+        try:
+            start = date(*map(int, dates[0]))
+            end = date(*map(int, dates[-1]))
+        except ValueError:
+            return ("UNKNOWN", None, None)
+        return (_status_from_dates(start, end, today), start.isoformat(), end.isoformat())
+    if any(p in text for p in _ROLLING_PATTERNS):
+        return ("ROLLING", None, None)
+    return ("UNKNOWN", None, None)
+
+
 REGIONS = [
     "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
     "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
@@ -87,6 +106,12 @@ def extract_regions_from_hashtags(hashtags):
     return found or ["UNKNOWN"]
 
 
+def extract_regions_from_title(title):
+    """제목 속 표준 지역명 추출(예: '경남센터', '[울산]'). 없으면 UNKNOWN."""
+    found = [r for r in REGIONS if r in (title or "")]
+    return found or ["UNKNOWN"]
+
+
 CATEGORIES = [
     "자금", "R&D", "수출·판로", "인력", "창업·사업화",
     "교육·컨설팅", "시설·공간", "행사·네트워크", "기타",
@@ -107,11 +132,16 @@ _KSTARTUP_CAT = {
     "시설ㆍ공간ㆍ보육": "시설·공간",
     "행사ㆍ네트워크": "행사·네트워크",
 }
+_WBIZ_CAT = {
+    "지원사업": "창업·사업화", "BI입주기업": "시설·공간",
+    "교육·행사": "교육·컨설팅", "시설대관": "시설·공간",
+}
 _TAG = re.compile(r"<[^>]+>")
+_CAT_TABLES = {"bizinfo": _BIZINFO_CAT, "kstartup": _KSTARTUP_CAT, "wbiz": _WBIZ_CAT}
 
 
 def map_category(source, raw):
-    table = _BIZINFO_CAT if source == "bizinfo" else _KSTARTUP_CAT
+    table = _CAT_TABLES.get(source, {})
     return table.get((raw or "").strip(), "기타")
 
 
