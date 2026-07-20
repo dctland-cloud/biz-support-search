@@ -6,6 +6,16 @@ const CATEGORIES = ["자금","R&D","수출·판로","인력","창업·사업화"
   "교육·컨설팅","시설·공간","행사·네트워크","기타"];
 const PAGE_SIZE = 30;
 
+// 공식 태그 4건 외에 제목·요약의 여성기업/여성창업 계열 언급까지 잡는다.
+// 여성 '고용' 지원(직장문화개선 등)은 대상이 달라 의도적으로 제외.
+const WOMEN_TARGET = "여성기업";
+const WOMEN_RE = /여성\s*기업|여성\s*창업|여성기업인|여성\s*벤처|여성\s*경제인|여성\s*CEO|여성\s*대표|우먼|W-?벤처/;
+
+function womenMatch(r) {
+  return r.target_types.includes(WOMEN_TARGET) ||
+    WOMEN_RE.test(r.title + " " + (r.summary || ""));
+}
+
 const state = {
   records: [],
   filters: { region: "", stage: "", age: "", categories: new Set(), targets: new Set(), keyword: "", sort: "deadline" },
@@ -34,8 +44,17 @@ function matchRecord(r, f) {
     else if (!ageMatch(f.age, r.age_limit)) return null;
   }
   if (f.targets.size) {
-    if (!r.target_types.length) complete = false;
-    else if (![...f.targets].some(t => r.target_types.includes(t))) return null;
+    const officialSelected = [...f.targets].filter(t => t !== WOMEN_TARGET);
+    const officialHit = officialSelected.some(t => r.target_types.includes(t));
+    const womenHit = f.targets.has(WOMEN_TARGET) && womenMatch(r);
+    if (womenHit || officialHit) {
+      // 키워드로만 걸린 공고는 추정이므로 원문 확인 필요로 낮춘다
+      if (womenHit && !officialHit && !r.target_types.includes(WOMEN_TARGET)) complete = false;
+    } else if (officialSelected.length && !r.target_types.length) {
+      complete = false;
+    } else {
+      return null;
+    }
   }
   if (f.categories.size && !f.categories.has(r.category)) return null;
   if (f.keyword) {
@@ -133,8 +152,9 @@ function init(records, meta) {
   buildChips("f-category", CATEGORIES, state.filters.categories);
   const targetCount = new Map();
   records.forEach(r => r.target_types.forEach(t => targetCount.set(t, (targetCount.get(t) || 0) + 1)));
-  const topTargets = [...targetCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
-  buildChips("f-targets", topTargets, state.filters.targets);
+  const topTargets = [...targetCount.entries()].sort((a, b) => b[1] - a[1])
+    .slice(0, 8).map(([t]) => t).filter(t => t !== WOMEN_TARGET);
+  buildChips("f-targets", [WOMEN_TARGET, ...topTargets], state.filters.targets);
 
   const bind = (id, key) => document.getElementById(id).addEventListener("change", e => {
     state.filters[key] = e.target.value; state.shown = PAGE_SIZE; render();
