@@ -2,8 +2,14 @@
 body { margin: 0; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
        background: #f5f6f8; color: #1c1e21; line-height: 1.5; }
 header, .filters, section, footer { max-width: 860px; margin: 0 auto; padding: 12px 16px; }
+header { position: relative; }
 header h1 { margin: 16px 0 4px; font-size: 1.5rem; }
 .sub { color: #555; font-size: .85rem; margin: 0; }
+.maker-badge { position: absolute; top: 12px; right: 16px;
+               background: #1a56db; color: #fff; font-size: .74rem; font-weight: 600;
+               padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+               box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.maker-note { color: #555; font-weight: 600; margin: 0 0 8px; }
 .filters { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
            margin-top: 12px; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
