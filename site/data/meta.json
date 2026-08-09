@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-08-09T05:15:14+09:00",
-  "total": 1777,
+  "generated_at": "2026-08-10T05:19:38+09:00",
+  "total": 1768,
   "sources": {
     "bizinfo": {
-      "ok": true,
-      "count": 1514,
-      "error": null
+      "ok": false,
+      "count": 1510,
+      "error": "HTTPSConnectionPool(host='www.bizinfo.go.kr', port=443): Max retries exceeded with url: /uss/rss/bizinfoApi.do?crtfcKey=***&dataType=json&searchCnt=0 (Caused by NameResolutionError(\"HTTPSConnection(host='www.bizinfo.go.kr', port=443): Failed to resolve 'www.bizinfo.go.kr' ([Errno -3] Temporary failure in name resolution)\"))"
     },
     "kstartup": {
       "ok": true,
-      "count": 261,
+      "count": 257,
       "error": null
     },
     "wbiz": {
