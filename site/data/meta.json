@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-08-13T05:32:17+09:00",
-  "total": 1788,
+  "generated_at": "2026-08-14T05:28:03+09:00",
+  "total": 1894,
   "sources": {
     "bizinfo": {
-      "ok": false,
-      "count": 1551,
-      "error": "HTTPSConnectionPool(host='www.bizinfo.go.kr', port=443): Max retries exceeded with url: /uss/rss/bizinfoApi.do?crtfcKey=***&dataType=json&searchCnt=0 (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.bizinfo.go.kr', port=443) at 0x7f584d59bc50>, 'Connection to www.bizinfo.go.kr timed out. (connect timeout=15)'))"
+      "ok": true,
+      "count": 1600,
+      "error": null
     },
     "kstartup": {
       "ok": true,
-      "count": 262,
+      "count": 293,
       "error": null
     },
     "wbiz": {
