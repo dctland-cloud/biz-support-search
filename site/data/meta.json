@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-10-16T07:44:09+09:00",
-  "total": 1702,
+  "generated_at": "2026-10-17T07:16:44+09:00",
+  "total": 1664,
   "sources": {
     "bizinfo": {
       "ok": true,
-      "count": 1477,
+      "count": 1437,
       "error": null
     },
     "kstartup": {
       "ok": true,
-      "count": 227,
+      "count": 228,
       "error": null
     },
     "wbiz": {
       "ok": true,
-      "count": 4,
+      "count": 5,
       "error": null
     }
   }
