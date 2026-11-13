@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-11-12T10:43:06+09:00",
-  "total": 1457,
+  "generated_at": "2026-11-13T09:46:01+09:00",
+  "total": 1464,
   "sources": {
     "bizinfo": {
       "ok": true,
-      "count": 1357,
+      "count": 1367,
       "error": null
     },
     "kstartup": {
       "ok": false,
-      "count": 109,
+      "count": 105,
       "error": "Expecting value: line 1 column 1 (char 0)"
     },
     "wbiz": {
