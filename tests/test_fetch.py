@@ -203,3 +203,48 @@ def test_fetch_wbiz_empty_board_raises(monkeypatch):
     session = _WbizPageSession(["<ul></ul>"])
     with pytest.raises(FetchError, match="wbiz"):
         fetch_mod.fetch_wbiz(session=session)
+
+
+def test_kstartup_official_endpoint_with_key(monkeypatch):
+    import collector.fetch as mod
+    class Session:
+        def get(self, url, params, **kwargs):
+            assert url == mod.KSTARTUP_PUBLIC_URL
+            assert params['serviceKey'] == 'test+/key='
+            assert params['cond[rcrt_prgs_yn::EQ]'] == 'Y'
+            assert params['returnType'] == 'json'
+            return _FakeSingleRespKstartup()
+    assert mod.fetch_kstartup(session=Session(), service_key='test+/key=') == [{'pbanc_sn': 1}]
+
+
+def test_kstartup_http_200_firewall_message_is_actionable():
+    import collector.fetch as mod
+    class Response:
+        text = 'The request / response contrary to Web firewall security policies have been blocked. private IP'
+        def json(self):
+            raise ValueError('not JSON')
+    with pytest.raises(FetchError, match='KSTARTUP_SERVICE_KEY') as exc:
+        mod._kstartup_json(Response())
+    assert 'private IP' not in str(exc.value)
+
+
+def test_kstartup_non_json_does_not_leak_body():
+    import collector.fetch as mod
+    class Response:
+        text = '<error>PRIVATE_SERVICE_KEY</error>'
+        def json(self):
+            raise ValueError('not JSON')
+    with pytest.raises(FetchError, match='인증키 확인') as exc:
+        mod._kstartup_json(Response())
+    assert 'PRIVATE_SERVICE_KEY' not in str(exc.value)
+
+
+@pytest.mark.parametrize('payload', [
+    [], {'currentCount': 0, 'matchCount': 0, 'data': {}},
+    {'currentCount': '1', 'matchCount': 1, 'data': [{}]},
+    {'currentCount': 1, 'matchCount': -1, 'data': [{}]},
+    {'currentCount': 2, 'matchCount': 2, 'data': [{}]},
+])
+def test_kstartup_rejects_malformed_payload(payload):
+    with pytest.raises(FetchError):
+        validate_kstartup_page(payload)

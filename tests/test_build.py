@@ -210,3 +210,11 @@ def test_main_both_fail_exits_without_write(tmp_path, monkeypatch):
     assert exc_info.value.code == 1
     assert not (tmp_path / "programs.json").exists()
     assert not (tmp_path / "meta.json").exists()
+
+
+def test_redact_kstartup_key_and_encoded_forms(monkeypatch):
+    from urllib.parse import quote_plus
+    key = 'private+secret/value='
+    monkeypatch.setenv('KSTARTUP_SERVICE_KEY', key)
+    assert key not in _redact('error ' + key)
+    assert quote_plus(key) not in _redact('error ' + quote_plus(key))
