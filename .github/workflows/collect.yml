@@ -37,6 +37,7 @@ jobs:
       - name: Collect data
         env:
           BIZINFO_CRTFC_KEY: ${{ secrets.BIZINFO_CRTFC_KEY }}
+          KSTARTUP_SERVICE_KEY: ${{ secrets.KSTARTUP_SERVICE_KEY }}
         run: python -m collector.build
 
       - name: Warn on partial source failure
@@ -72,3 +73,20 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Fail run if any source used stale fallback data
+        run: |
+          python - <<'EOF'
+          import json
+          import os
+          import sys
+          with open("site/data/meta.json", encoding="utf-8") as f:
+              meta = json.load(f)
+          failed = [name for name, status in meta["sources"].items() if not status["ok"]]
+          if failed:
+              message = "부분 수집 실패 (직전 데이터 사용): " + ", ".join(failed)
+              print("::error::" + message)
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+                  f.write(message + "\n\n다른 소스의 최신 데이터는 배포되었습니다. 실패 소스는 최신이 아닙니다.\n")
+              sys.exit(1)
+          EOF

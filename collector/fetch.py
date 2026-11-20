@@ -1,4 +1,5 @@
 """공식 API 호출 + 응답 검증. HTTP 200이어도 본문 오류를 반드시 검사한다."""
+import os
 import re
 import time
 
@@ -7,6 +8,7 @@ import requests
 USER_AGENT = "biz-support-search/1.0 (+https://github.com/dctland-cloud/biz-support-search)"
 BIZINFO_URL = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
 KSTARTUP_URL = "https://nidapi.k-startup.go.kr/api/kisedKstartupService/v1/getAnnouncementInformation"
+KSTARTUP_PUBLIC_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01"
 WBIZ_URL = "https://wbiz.or.kr/notice/bizNew.do"
 _HEADERS = {"User-Agent": USER_AGENT}
 _TIMEOUT = (15, 120)
@@ -59,10 +61,35 @@ def fetch_bizinfo(crtfc_key, session=None):
 
 
 def validate_kstartup_page(payload):
+    if not isinstance(payload, dict):
+        raise FetchError("kstartup: 응답 객체 형식 오류")
     for key in ("currentCount", "matchCount", "data"):
         if key not in payload:
             raise FetchError(f"kstartup: 응답에 {key} 없음")
+    if not isinstance(payload["data"], list):
+        raise FetchError("kstartup: data 목록 형식 오류")
+    for key in ("currentCount", "matchCount"):
+        if type(payload[key]) is not int or payload[key] < 0:
+            raise FetchError(f"kstartup: {key} 정수 형식 오류")
+    if payload["currentCount"] != len(payload["data"]):
+        raise FetchError("kstartup: currentCount와 실제 목록 개수 불일치")
     return payload
+
+
+def _kstartup_json(resp):
+    """HTTP 200 차단 HTML/오류 XML도 실패로 취급. 원문에는 키/IP가 있어 출력 금지."""
+    try:
+        return resp.json()
+    except ValueError:
+        body = getattr(resp, "text", "").lower()
+        if "web firewall" in body or "security policies" in body:
+            raise FetchError(
+                "kstartup: 제공기관 웹 방화벽이 요청을 차단함. "
+                "공공데이터포털 활용승인·KSTARTUP_SERVICE_KEY 설정 또는 제공기관 차단 상태 확인 필요"
+            ) from None
+        raise FetchError(
+            "kstartup: JSON이 아닌 응답. 공공데이터포털 API 활용승인 및 인증키 확인 필요"
+        ) from None
 
 
 # wbiz 사업공고 목록은 API가 없어 서버 렌더링 HTML을 파싱한다 (2026-07 실측 구조)
@@ -126,7 +153,11 @@ def fetch_wbiz(session=None):
     return items
 
 
-def fetch_kstartup(session=None):
+def fetch_kstartup(session=None, service_key=None):
+    # 공공데이터포털의 일반 인증키(Decoding)를 사용한다. 키가 설정되면
+    # 인증 실패를 무인증 경로로 우회하지 않고 명확히 실패시킨다.
+    key = service_key or os.environ.get("KSTARTUP_SERVICE_KEY")
+    url = KSTARTUP_PUBLIC_URL if key else KSTARTUP_URL
     s = session or requests.Session()
     items, page = [], 1
     while True:
@@ -134,15 +165,16 @@ def fetch_kstartup(session=None):
             raise FetchError(f"kstartup: 페이지 상한 {_MAX_PAGES} 초과")
         resp = _get_with_retry(
             s,
-            KSTARTUP_URL,
+            url,
             params={
+                **({"serviceKey": key} if key else {}),
                 "page": page,
                 "perPage": 1000,
                 "returnType": "json",
                 "cond[rcrt_prgs_yn::EQ]": "Y",
             },
         )
-        payload = validate_kstartup_page(resp.json())
+        payload = validate_kstartup_page(_kstartup_json(resp))
         items.extend(payload["data"])
         if len(items) >= payload["matchCount"] or not payload["data"]:
             break
