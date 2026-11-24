@@ -35,6 +35,11 @@ def _redact(text):
     key = load_env_key()
     if key:
         text = text.replace(key, "***")
+    ks_key = os.environ.get("KSTARTUP_SERVICE_KEY")
+    if ks_key:
+        from urllib.parse import quote, quote_plus
+        for secret in (ks_key, quote(ks_key, safe=""), quote_plus(ks_key)):
+            text = text.replace(secret, "***")
     return text
 
 
