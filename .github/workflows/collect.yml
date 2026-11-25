@@ -2,26 +2,25 @@ name: collect-and-deploy
 
 on:
   schedule:
-    - cron: "0 20 * * *"   # 매일 05:00 KST
+    - cron: "17 20 * * *"   # 매일 05:17 KST (정각은 GitHub 예약 실행이 크게 밀리므로 피함)
   workflow_dispatch:
   push:
     branches: [master]
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  # 1단계: 테스트 → 수집 → 데이터 커밋 → 배포용 묶음 업로드
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: write
+      pages: read
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +36,7 @@ jobs:
       - name: Collect data
         env:
           BIZINFO_CRTFC_KEY: ${{ secrets.BIZINFO_CRTFC_KEY }}
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
         run: python -m collector.build
 
       - name: Warn on partial source failure
@@ -63,12 +63,47 @@ jobs:
           fi
 
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+          name: github-pages
+          retention-days: 3
 
-      - id: deployment
+  # 2단계: 업로드된 묶음이 조회될 때까지 기다린 뒤 배포 (실패 시 이 작업만 재실행 가능)
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Wait for Pages artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in $(seq 1 12); do
+            if count=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?name=github-pages" \
+              --jq '[.artifacts[] | select(.expired == false)] | length'); then
+              if [ "$count" -ge 1 ]; then
+                echo "Pages artifact is ready."
+                exit 0
+              fi
+            fi
+            echo "Waiting for artifact: $attempt/12"
+            sleep 10
+          done
+          echo "::error::Pages artifact was not available."
+          exit 1
+
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages

@@ -75,7 +75,7 @@ def test_to_records_fails_over_5pct_malformed():
 
 
 def test_redact_masks_crtfckey_and_real_key(monkeypatch):
-    monkeypatch.setattr(build_mod, "load_env_key", lambda: "SECRET123")
+    monkeypatch.setattr(build_mod, "load_env_key", lambda name="BIZINFO_CRTFC_KEY": "SECRET123")
     text = "요청 실패: https://api.example/?crtfcKey=SECRET123&other=1"
     redacted = _redact(text)
     assert "SECRET123" not in redacted
@@ -118,12 +118,12 @@ def test_main_partial_failure_uses_previous(tmp_path, monkeypatch):
     monkeypatch.setattr(build_mod, "DATA_DIR", tmp_path)
     prev = [_rec(1, "bizinfo")]
     (tmp_path / "programs.json").write_text(json.dumps(prev), encoding="utf-8")
-    monkeypatch.setattr(build_mod, "load_env_key", lambda: "fake-key")
+    monkeypatch.setattr(build_mod, "load_env_key", lambda name="BIZINFO_CRTFC_KEY": "fake-key")
 
     def fake_fetch_bizinfo(key, session=None):
         raise FetchError("bizinfo 인증 실패")
 
-    def fake_fetch_kstartup(session=None):
+    def fake_fetch_kstartup(session=None, service_key=None):
         return [_kstartup_item()]
 
     monkeypatch.setattr(build_mod.fetch, "fetch_bizinfo", fake_fetch_bizinfo)
@@ -145,9 +145,9 @@ def test_main_partial_failure_uses_previous(tmp_path, monkeypatch):
 
 def test_main_includes_wbiz_records(tmp_path, monkeypatch):
     monkeypatch.setattr(build_mod, "DATA_DIR", tmp_path)
-    monkeypatch.setattr(build_mod, "load_env_key", lambda: None)  # bizinfo 실패
+    monkeypatch.setattr(build_mod, "load_env_key", lambda name="BIZINFO_CRTFC_KEY": None)  # bizinfo 실패
 
-    def fake_fetch_kstartup(session=None):
+    def fake_fetch_kstartup(session=None, service_key=None):
         return [_kstartup_item()]
 
     def fake_fetch_wbiz(session=None):
@@ -174,12 +174,12 @@ def test_main_reclassifies_fallback_record_closed_and_filters(tmp_path, monkeypa
     past_end = (today - timedelta(days=1)).isoformat()
     prev = [_rec(1, "bizinfo", period_status="OPEN", apply_start=past_start, apply_end=past_end)]
     (tmp_path / "programs.json").write_text(json.dumps(prev), encoding="utf-8")
-    monkeypatch.setattr(build_mod, "load_env_key", lambda: "fake-key")
+    monkeypatch.setattr(build_mod, "load_env_key", lambda name="BIZINFO_CRTFC_KEY": "fake-key")
 
     def fake_fetch_bizinfo(key, session=None):
         raise FetchError("bizinfo 인증 실패")
 
-    def fake_fetch_kstartup(session=None):
+    def fake_fetch_kstartup(session=None, service_key=None):
         return [_kstartup_item()]
 
     monkeypatch.setattr(build_mod.fetch, "fetch_bizinfo", fake_fetch_bizinfo)
@@ -196,9 +196,9 @@ def test_main_reclassifies_fallback_record_closed_and_filters(tmp_path, monkeypa
 
 def test_main_both_fail_exits_without_write(tmp_path, monkeypatch):
     monkeypatch.setattr(build_mod, "DATA_DIR", tmp_path)
-    monkeypatch.setattr(build_mod, "load_env_key", lambda: None)
+    monkeypatch.setattr(build_mod, "load_env_key", lambda name="BIZINFO_CRTFC_KEY": None)
 
-    def fake_fetch_kstartup(session=None):
+    def fake_fetch_kstartup(session=None, service_key=None):
         raise FetchError("kstartup 오류")
 
     monkeypatch.setattr(build_mod.fetch, "fetch_kstartup", fake_fetch_kstartup)

@@ -17,14 +17,14 @@ DATA_DIR = ROOT / "site" / "data"
 _REQUIRED = ("id", "title", "url")
 
 
-def load_env_key():
-    key = os.environ.get("BIZINFO_CRTFC_KEY")
+def load_env_key(name="BIZINFO_CRTFC_KEY"):
+    key = os.environ.get(name)
     if key:
         return key
     env_file = Path.home() / ".biz-support-search" / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
-            if line.strip().startswith("BIZINFO_CRTFC_KEY="):
+            if line.strip().startswith(f"{name}="):
                 return line.split("=", 1)[1].strip().strip('"').strip("'")
     return None
 
@@ -32,9 +32,10 @@ def load_env_key():
 def _redact(text):
     """오류 문자열에 인증키가 그대로 남지 않도록 마스킹 (meta.json에 커밋됨)."""
     text = re.sub(r"(crtfcKey|serviceKey)=[^&\s\"']+", r"\1=***", text)
-    key = load_env_key()
-    if key:
-        text = text.replace(key, "***")
+    for name in ("BIZINFO_CRTFC_KEY", "DATA_GO_KR_SERVICE_KEY"):
+        key = load_env_key(name)
+        if key:
+            text = text.replace(key, "***")
     return text
 
 
@@ -103,7 +104,8 @@ def main():
         return _to_records(fetch.fetch_bizinfo(key), to_record_bizinfo, today)
 
     def collect_kstartup():
-        return _to_records(fetch.fetch_kstartup(), to_record_kstartup, today)
+        service_key = load_env_key("DATA_GO_KR_SERVICE_KEY")
+        return _to_records(fetch.fetch_kstartup(service_key=service_key), to_record_kstartup, today)
 
     def collect_wbiz():
         return _to_records(fetch.fetch_wbiz(), to_record_wbiz, today)

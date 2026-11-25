@@ -7,6 +7,8 @@ import requests
 USER_AGENT = "biz-support-search/1.0 (+https://github.com/dctland-cloud/biz-support-search)"
 BIZINFO_URL = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
 KSTARTUP_URL = "https://nidapi.k-startup.go.kr/api/kisedKstartupService/v1/getAnnouncementInformation"
+# 2026-10-26부터 nidapi 호스트 전체가 웹 방화벽 차단 페이지(HTML)를 반환 → 공공데이터포털 정식 경로 사용
+KSTARTUP_DATA_GO_KR_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01"
 WBIZ_URL = "https://wbiz.or.kr/notice/bizNew.do"
 _HEADERS = {"User-Agent": USER_AGENT}
 _TIMEOUT = (15, 120)
@@ -126,23 +128,35 @@ def fetch_wbiz(session=None):
     return items
 
 
-def fetch_kstartup(session=None):
+def _parse_kstartup_json(resp):
+    """JSON이 아닌 응답(방화벽 차단 HTML 등)을 알아볼 수 있는 오류로 바꾼다."""
+    try:
+        return resp.json()
+    except ValueError:
+        snippet = " ".join((resp.text or "")[:200].split())
+        if "firewall" in snippet.lower():
+            raise FetchError("kstartup: 웹 방화벽 차단 응답(HTML) — 공공데이터포털 serviceKey 경로 필요")
+        raise FetchError(f"kstartup: JSON 아닌 응답 ({resp.headers.get('Content-Type', '?')}): {snippet[:120]}")
+
+
+def fetch_kstartup(session=None, service_key=None):
+    """service_key(공공데이터포털)가 있으면 정식 경로, 없으면 nidapi 직접 호출."""
     s = session or requests.Session()
+    url = KSTARTUP_DATA_GO_KR_URL if service_key else KSTARTUP_URL
     items, page = [], 1
     while True:
         if page > _MAX_PAGES:
             raise FetchError(f"kstartup: 페이지 상한 {_MAX_PAGES} 초과")
-        resp = _get_with_retry(
-            s,
-            KSTARTUP_URL,
-            params={
-                "page": page,
-                "perPage": 1000,
-                "returnType": "json",
-                "cond[rcrt_prgs_yn::EQ]": "Y",
-            },
-        )
-        payload = validate_kstartup_page(resp.json())
+        params = {
+            "page": page,
+            "perPage": 1000,
+            "returnType": "json",
+            "cond[rcrt_prgs_yn::EQ]": "Y",
+        }
+        if service_key:
+            params["serviceKey"] = service_key
+        resp = _get_with_retry(s, url, params=params)
+        payload = validate_kstartup_page(_parse_kstartup_json(resp))
         items.extend(payload["data"])
         if len(items) >= payload["matchCount"] or not payload["data"]:
             break

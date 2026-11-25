@@ -203,3 +203,62 @@ def test_fetch_wbiz_empty_board_raises(monkeypatch):
     session = _WbizPageSession(["<ul></ul>"])
     with pytest.raises(FetchError, match="wbiz"):
         fetch_mod.fetch_wbiz(session=session)
+
+
+class _RecordingSession:
+    def __init__(self, resp):
+        self.resp = resp
+        self.calls = []
+
+    def get(self, url, params=None, **kw):
+        self.calls.append((url, params))
+        return self.resp
+
+
+def test_fetch_kstartup_uses_data_go_kr_when_service_key_given():
+    import collector.fetch as fetch_mod
+
+    session = _RecordingSession(_FakeSingleRespKstartup())
+    items = fetch_mod.fetch_kstartup(session=session, service_key="KEY123")
+    assert items == [{"pbanc_sn": 1}]
+    url, params = session.calls[0]
+    assert url == fetch_mod.KSTARTUP_DATA_GO_KR_URL
+    assert params["serviceKey"] == "KEY123"
+    assert params["cond[rcrt_prgs_yn::EQ]"] == "Y"
+
+
+def test_fetch_kstartup_without_key_uses_nidapi():
+    import collector.fetch as fetch_mod
+
+    session = _RecordingSession(_FakeSingleRespKstartup())
+    fetch_mod.fetch_kstartup(session=session)
+    url, params = session.calls[0]
+    assert url == fetch_mod.KSTARTUP_URL
+    assert "serviceKey" not in params
+
+
+class _FirewallHtmlResp:
+    text = "<br><center><h2>The request / response that are contrary to the Web firewall security policies have been blocked.</h2>"
+    headers = {"Content-Type": "text/html"}
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        raise ValueError("Expecting value: line 1 column 1 (char 0)")
+
+
+def test_fetch_kstartup_firewall_html_gives_clear_error():
+    import collector.fetch as fetch_mod
+
+    with pytest.raises(FetchError, match="웹 방화벽"):
+        fetch_mod.fetch_kstartup(session=_RecordingSession(_FirewallHtmlResp()))
+
+
+def test_redact_masks_data_go_kr_key(monkeypatch):
+    import collector.build as build_mod
+
+    keys = {"DATA_GO_KR_SERVICE_KEY": "DGK999"}
+    monkeypatch.setattr(build_mod, "load_env_key", lambda name="BIZINFO_CRTFC_KEY": keys.get(name))
+    out = build_mod._redact("실패: https://apis.data.go.kr/x?page=1&serviceKey=DGK999 / DGK999")
+    assert "DGK999" not in out
