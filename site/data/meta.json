@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-11-25T11:41:37+09:00",
-  "total": 1384,
+  "generated_at": "2026-11-26T11:53:22+09:00",
+  "total": 1386,
   "sources": {
     "bizinfo": {
       "ok": true,
-      "count": 1306,
+      "count": 1310,
       "error": null
     },
     "kstartup": {
       "ok": false,
-      "count": 84,
+      "count": 83,
       "error": "kstartup: 웹 방화벽 차단 응답(HTML) — 공공데이터포털 serviceKey 경로 필요"
     },
     "wbiz": {
       "ok": true,
-      "count": 3,
+      "count": 2,
       "error": null
     }
   }
